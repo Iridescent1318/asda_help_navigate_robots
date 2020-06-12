@@ -4,10 +4,22 @@ import csv
 import time
 import scipy.stats
 
-FEAT_EXTRACT = 0
+FEAT_EXTRACT = 1
 
 def series_fft(x):
     return (np.abs(np.fft.fft(x)) / len(x))[range(int(len(x)/2))]
+
+def topk_val(x, k):
+    if k > len(x):
+        return None
+    x_sort = np.sort(x)[::-1]
+    return x_sort[0:k]
+
+def topk_arg(x, k):
+    if k > len(x):
+        return None
+    x_sort = np.argsort(x)[::-1]
+    return x_sort[0:k]
 
 def scipy_skew(x):
     return scipy.stats.skew(x)
@@ -43,18 +55,29 @@ if __name__ == "__main__":
             x_train_feats[c + '_std']  = x_train_df.groupby(['series_id'])[c].std()
             x_train_feats[c + '_max']  = x_train_df.groupby(['series_id'])[c].max()
             x_train_feats[c + '_min']  = x_train_df.groupby(['series_id'])[c].min()
+            x_train_feats[c + '_range'] = x_train_feats[c + '_max'] - x_train_feats[c + '_min']
             x_train_feats[c + '_median']  = x_train_df.groupby(['series_id'])[c].median()
             x_train_feats[c + '_skewness'] = x_train_df.groupby(['series_id'])[c].apply(scipy_skew)
             x_train_feats[c + '_kurtosis'] = x_train_df.groupby(['series_id'])[c].apply(scipy_kurtosis)
             x_train_feats[c + '_maxOverMin']  = x_train_feats[c + '_max'] / (x_train_feats[c + '_min'] + 1e-10)
             x_train_feats[c + '_meanAbsChange']  = x_train_df.groupby(['series_id'])[c].apply(lambda x: np.mean(np.abs(np.diff(x))))
             x_train_feats[c + '_meanChangeOfAbsChange']  = x_train_df.groupby(['series_id'])[c].apply(lambda x: np.mean(np.diff(np.abs(np.diff(x)))))
+            x_train_feats[c + '_q25'] = x_train_df.groupby(['series_id'])[c].quantile(0.25)
+            x_train_feats[c + '_q75'] = x_train_df.groupby(['series_id'])[c].quantile(0.75)
             x_train_feats[c + '_absMax']  = x_train_df.groupby(['series_id'])[c].apply(lambda x: np.max(np.abs(x)))
             x_train_feats[c + '_absMin']  = x_train_df.groupby(['series_id'])[c].apply(lambda x: np.min(np.abs(x)))
+            x_train_feats[c + '_absRange'] = x_train_feats[c + '_absMax'] - x_train_feats[c + '_absMin']
+            x_train_feats[c + '_absMaxOverMin'] = x_train_feats[c + '_absMax'] / (x_train_feats[c + '_absMin'] + 1e-10)
             x_train_feats[c + '_absMean'] = x_train_df.groupby(['series_id'])[c].apply(lambda x: np.mean(np.abs(x)))
             x_train_feats[c + '_absStd'] = x_train_df.groupby(['series_id'])[c].apply(lambda x: np.std(np.abs(x)))
-            # if c in ['total_angular_velocity', 'total_linear_acceleration']:
-            #     x_train_feats[c + '_fftMean'] = x_train_df.groupby(['series_id'])[c].apply(lambda x: np.std(np.abs(x)))
+            # DEPRECATED
+            # if c in ['total_angular_velocity', 'total_linear_acceleration', 'angular_velocity_X', 'angular_velocity_Y', 'angular_velocity_Z',
+            #          'linear_acceleration_X', 'linear_acceleration_Y', 'linear_acceleration_Z']:
+            #     x_fft_val_topk = x_train_df.groupby(['series_id'])[c].apply(lambda x, k=5: topk_val(series_fft(x), k)).values.tolist()
+            #     x_fft_arg_topk = x_train_df.groupby(['series_id'])[c].apply(lambda x, k=5: topk_arg(series_fft(x), k)).values.tolist()
+            #     for i in range(5):
+            #         x_train_feats[c + '_fft_val_top_' + str(i+1)] = [c[i] for c in x_fft_val_topk]
+            #         x_train_feats[c + '_fft_arg_top_' + str(i+1)] = [c[i] for c in x_fft_arg_topk]
         feats_extract_time = time.perf_counter() - feats_extract_start
 
         print("Feature extracting total time:{:.6f} second(s).".format(feats_extract_time))
