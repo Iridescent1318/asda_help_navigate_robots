@@ -10,21 +10,23 @@ x_train = read.csv(TRAIN_SOURCE)
 y_train = read.csv('y_train.csv')
 names(x_train)[1] <- 'series_id'
 
-NO_PCA = 1
-MANUAL_TRAIN = 0
+USE_PCA = 0
+CROSS_VALID = 1
 
-if(NO_PCA == 0){
+if(USE_PCA){
   x.pca <- princomp(x_train[2:length(x_train)])
   summary(x.pca, loadings=TRUE)
+  x_train_trans <- cbind(x_train[1], x.pca$scores)
 }
 
-if(MANUAL_TRAIN){
-  x_train_trans <- cbind(x_train[1], x.pca$scores)
-  y <- factor(y_train$surface)
+y <- factor(y_train$surface)
+
+if(CROSS_VALID){
+  
   
   N <- length(x_train$series_id)
   cv_train_percent <- 0.9
-  cv_times <- 10
+  cv_times <- 1
   acc_list_ctree <- array(1:cv_times)/10
   acc_list_svm <- array(1:cv_times)/10
   acc_list_rf <- array(1:cv_times)/10
@@ -33,7 +35,7 @@ if(MANUAL_TRAIN){
     idx_shuffle <- sample(1:N, N, replace=FALSE)
     train_end_idx <- round(N*cv_train_percent)
     
-    if(NO_PCA){
+    if(USE_PCA == 0){
       x_cv_train <- x_train[idx_shuffle[1:train_end_idx],]
       x_cv_test <- x_train[idx_shuffle[(train_end_idx+1):N],]
     }else{
@@ -48,7 +50,7 @@ if(MANUAL_TRAIN){
     
     s = proc.time()
     robot.ctree <- ctree(y_cv_train~., data = cv_train_merge)
-    y_cv_pred_ctree <- predict(robot.ctree, x_cv_test)
+    y_cv_pred_ctree <- predict(robot.ctree, x_cv_test[2:length(x_cv_test)])
     acc_ctree <- sum(y_cv_pred_ctree == y_cv_test) / length(y_cv_test)
     acc_list_ctree[i] <- acc_ctree
     t = proc.time() - s
@@ -56,7 +58,7 @@ if(MANUAL_TRAIN){
     
     s = proc.time()
     robot.svm <- svm(y_cv_train~., data = cv_train_merge)
-    y_cv_pred_svm <- predict(robot.svm, x_cv_test)
+    y_cv_pred_svm <- predict(robot.svm, x_cv_test[2:length(x_cv_test)])
     acc_svm <- sum(y_cv_pred_svm == y_cv_test) / length(y_cv_test)
     acc_list_svm[i] <- acc_svm
     t = proc.time() - s
@@ -64,7 +66,7 @@ if(MANUAL_TRAIN){
     
     s = proc.time()
     robot.rf <- randomForest(y_cv_train~., data=cv_train_merge, ntree = 500)
-    y_cv_pred_rf <- predict(robot.rf, x_cv_test)
+    y_cv_pred_rf <- predict(robot.rf, x_cv_test[2:length(x_cv_test)])
     acc_rf <- sum(y_cv_pred_rf == y_cv_test) / length(y_cv_test)
     acc_list_rf[i] <- acc_rf
     t = proc.time() - s
@@ -76,29 +78,13 @@ if(MANUAL_TRAIN){
   print(sprintf("AVERAGE CTree accuracy: %.4f  SVM accuracy: %.4f RF accuracy: %.4f", mean(acc_list_ctree), mean(acc_list_svm), mean(acc_list_rf)))
   
 }else{
-  y <- factor(y_train$surface)
-  sprintf("Test")
+  x_test = read.csv('x_test_feats.csv')
   train_merge = cbind(x_train[2:length(x_train)], y)
-  t_control <- trainControl(method="repeatedcv", number = 10, repeats = 3)
-  t_metric = "Accuracy"
-  robot.c50 <- train(y~., data=train_merge, method="C5.0", metric=t_metric, trControl = t_control)
-  summary(robot.c50)
-  
-  # data(Ionosphere)
-  # dataset <- Ionosphere
-  # dataset <- dataset[,-2]
-  # dataset$V1 <- as.numeric(as.character(dataset$V1))
-  # control <- trainControl(method="repeatedcv", number=10, repeats=3)
-  # seed <- 7
-  # metric <- "Accuracy"
-  # # C5.0
-  # set.seed(seed)
-  # fit.c50 <- train(Class~., data=dataset, method="C5.0", metric=metric, trControl=control)
-  # # Stochastic Gradient Boosting
-  # set.seed(seed)
-  # fit.gbm <- train(Class~., data=dataset, method="gbm", metric=metric, trControl=control, verbose=FALSE)
-  # # summarize results
-  # boosting_results <- resamples(list(c5.0=fit.c50, gbm=fit.gbm))
-  # summary(boosting_results)
-  # dotplot(boosting_results)
+  s = proc.time()
+  robot.rf <- randomForest(y~., data=train_merge, ntree = 500)
+  t = proc.time() - s
+  print(sprintf("Training rf time used: %.4f", t[3]))
+  y_test <- predict(robot.rf, x_test[2:length(x_test)])
+  result_submission <- data.frame(series_id=0:3815, surface=y_test)
+  write.csv(result_submission, file="result_submission.csv", row.names=FALSE)
 }
