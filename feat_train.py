@@ -18,22 +18,22 @@ if __name__ == "__main__":
     x_train_df = pd.read_csv('x_train_feats.csv')
     del x_train_df['series_id']
     y_train_df = pd.read_csv('y_train.csv')['surface']
-    folds = StratifiedKFold(n_splits=5, shuffle=True)
+    folds = StratifiedKFold(n_splits=10, shuffle=True)
     acc_overall = []
 
     for train, test in folds.split(x_train_df, y_train_df):
-        clf_name = ['Logistic Regression', 
+        clf_name = ['LogisticRegression', 
                     'AdaBoost', 
-                    'K Neighbors', 
-                    'Decision Tree',
-                    'Gradient Tree Boosting', 
-                    'Random Forest',
+                    'DecisionTreeGini',
+                    'DecisionTreeEntropy',
+                    'GradientTreeBoosting', 
+                    'RandomForest',
                     ]
 
-        clfs = [LogisticRegression(solver='newton-cg', max_iter=500, n_jobs=-1),
+        clfs = [LogisticRegression(solver='newton-cg', max_iter=1000, C=0.5, n_jobs=-1),
                 AdaBoostClassifier(n_estimators=500, learning_rate=0.1),
-                KNeighborsClassifier(n_neighbors=3, n_jobs=-1),
                 DecisionTreeClassifier(),
+                DecisionTreeClassifier(criterion='entropy'),
                 GradientBoostingClassifier(n_estimators=500),
                 RandomForestClassifier(n_estimators=500, n_jobs=-1),
                 ]
