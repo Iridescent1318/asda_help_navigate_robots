@@ -8,7 +8,7 @@ import scipy.stats
 FILE_NAME = 'X_train'
 FEAT_EXTRACT = 1
 EULER = 1
-ORIENT = 0
+ORIENT = 1
 
 def quat_to_euler(x, y, z, w):
     t0 = 2. * (w*x + y*z)
