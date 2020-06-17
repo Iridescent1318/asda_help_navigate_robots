@@ -132,11 +132,11 @@ if __name__ == "__main__":
                         'RandomForest',
                         ]
 
-            clfs = [LogisticRegression(solver='newton-cg', max_iter=1000, n_jobs=-1),
+            clfs = [LogisticRegression(solver='newton-cg', max_iter=1000, n_jobs=-1, class_weight='balanced'),
                     AdaBoostClassifier(n_estimators=500, learning_rate=0.01),
-                    DecisionTreeClassifier(),
+                    DecisionTreeClassifier(class_weight='balanced'),
                     GradientBoostingClassifier(n_estimators=500),
-                    RandomForestClassifier(n_estimators=500, n_jobs=-1),
+                    RandomForestClassifier(n_estimators=500, n_jobs=-1, class_weight='balanced'),
                     ]
             
             for c_name, c in zip(clf_name, clfs):
@@ -199,7 +199,4 @@ if __name__ == "__main__":
             plt.savefig('ROC_curve.png')
 
             break
-
-
-
 
